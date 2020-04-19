@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class FollowPath : MonoBehaviour
+public class Nutrient : MonoBehaviour
 {
     public Path initialPath;
     public int initialDirection = 1;
