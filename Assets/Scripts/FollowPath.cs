@@ -4,9 +4,11 @@ using UnityEngine;
 
 public class FollowPath : MonoBehaviour
 {
-    public Transform points;
+    public Path initialPath;
     public float moveSpeed;
+    public int direction = 1;
 
+    private Path currentPath;
     private int lastPoint = 0;
     private int currentPoint = 1;
     private float currentT = 0.0f;
@@ -17,28 +19,30 @@ public class FollowPath : MonoBehaviour
     {
         initialScale = transform.localScale;
 
+        currentPath = initialPath;
+
+        if (direction == -1)
+        {
+            currentT = 1.0f;
+        }
+
         transform.position = GetPosition();
     }
     
     void Update()
     {
-        if (currentPoint < points.childCount)
+        currentT += (moveSpeed / GetDistance()) * Time.deltaTime * direction;
+
+        if ((direction == 1 && currentT > 1.0f) || (direction == -1 && currentT < 0.0f))
         {
-            currentT += (moveSpeed / GetDistance()) * Time.deltaTime;
+            NextPoint();
 
-            if (currentT > 1.0f)
-            {
-                currentT = 0.0f;
-                lastPoint = currentPoint;
-                currentPoint += 1;
-
-                //GetComponent<SpriteRenderer>().color = GetColour();
-            }
-
-            transform.position = GetPosition();
+            GetComponent<SpriteRenderer>().color = GetColour();
         }
 
-        //transform.localScale = new Vector3(initialScale.x * (1.0f + Mathf.PerlinNoise(Time.time, 0.0f) * 0.1f), initialScale.y * (1.0f + Mathf.PerlinNoise(0.0f, Time.time) * 0.1f), transform.localScale.z);
+        transform.position = GetPosition();
+
+        transform.localScale = new Vector3(initialScale.x * (1.0f + Mathf.PerlinNoise(Time.time, 0.0f) * 0.1f), initialScale.y * (1.0f + Mathf.PerlinNoise(0.0f, Time.time) * 0.1f), transform.localScale.z);
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -46,8 +50,70 @@ public class FollowPath : MonoBehaviour
             currentPoint = 1;
             currentT = 0.0f;
 
-            //GetComponent<SpriteRenderer>().color = GetColour();
+            GetComponent<SpriteRenderer>().color = GetColour();
             transform.position = GetPosition();
+        }
+    }
+
+    void NextPoint()
+    {
+        switch (direction)
+        {
+            case 1:
+                lastPoint = currentPoint;
+                currentPoint += 1;
+                
+                if (currentPoint < currentPath.GetPointCount())
+                {
+                    currentT = 0.0f;
+                }
+                else
+                {
+                    if (currentPath.nextPath != null)
+                    {
+                        currentPath = currentPath.nextPath;
+                        currentT = 0.0f;
+                        currentPoint = 1;
+                        lastPoint = 0;
+                    }
+                    else
+                    {
+                        direction = -1;
+                        currentT = 1.0f;
+                        currentPoint = currentPath.GetPointCount() - 2;
+                        lastPoint = currentPath.GetPointCount() - 1;
+                    }
+                }
+
+                break;
+            case -1:
+                lastPoint = currentPoint;
+                currentPoint -= 1;
+
+                if (currentPoint >= 0)
+                {
+                    currentT = 1.0f;
+                }
+                else
+                {
+                    if (currentPath.previousPath != null)
+                    {
+                        currentPath = currentPath.previousPath;
+                        currentT = 1.0f;
+                        currentPoint = currentPath.GetPointCount() - 2;
+                        lastPoint = currentPath.GetPointCount() - 1;
+                    }
+                    else
+                    {
+                        direction = 1;
+                        currentT = 0.0f;
+                        currentPoint = 1;
+                        lastPoint = 0;
+                    }
+                }
+                break;
+            default: Debug.Log("direction is invalid: " + direction, gameObject);
+                break;
         }
     }
 
@@ -55,9 +121,9 @@ public class FollowPath : MonoBehaviour
     {
         float currentDistance = 1.0f;
 
-        if (points != null && lastPoint < points.childCount && currentPoint < points.childCount)
+        if (currentPath.pathPoints != null && lastPoint < currentPath.GetPointCount() && currentPoint < currentPath.GetPointCount())
         {
-            currentDistance = Vector3.Distance(points.GetChild(lastPoint).transform.position, points.GetChild(currentPoint).transform.position);
+            currentDistance = Vector3.Distance(currentPath.GetPoint(lastPoint).transform.position, currentPath.GetPoint(currentPoint).transform.position);
         }
 
         return currentDistance;
@@ -67,9 +133,9 @@ public class FollowPath : MonoBehaviour
     {
         Vector3 currentPosition = transform.position;
 
-        if (points != null && lastPoint < points.childCount && currentPoint < points.childCount)
+        if (currentPath != null && currentPath.pathPoints != null && lastPoint < currentPath.GetPointCount() && currentPoint < currentPath.GetPointCount())
         {
-            currentPosition = Vector3.Lerp(points.GetChild(lastPoint).transform.position, points.GetChild(currentPoint).transform.position, currentT);
+            currentPosition = Vector3.Lerp(currentPath.GetPoint(lastPoint).transform.position, currentPath.GetPoint(currentPoint).transform.position, currentT);
         }
 
         return currentPosition;
@@ -79,19 +145,19 @@ public class FollowPath : MonoBehaviour
     {
         Color currentColour = GetComponent<SpriteRenderer>().color;
 
-        if (points != null && currentPoint < points.childCount)
+        if (currentPath != null && currentPath.pathPoints != null && currentPoint < currentPath.GetPointCount())
         {
-            if (points.GetChild(currentPoint).name.ToLower().Contains("yellow"))
+            if (currentPath.GetPoint(currentPoint).name.ToLower().Contains("yellow"))
             {
                 currentColour = Color.yellow;
             }
 
-            if (points.GetChild(currentPoint).name.ToLower().Contains("cyan"))
+            if (currentPath.GetPoint(currentPoint).name.ToLower().Contains("cyan"))
             {
                 currentColour = Color.cyan;
             }
 
-            if (points.GetChild(currentPoint).name.ToLower().Contains("white"))
+            if (currentPath.GetPoint(currentPoint).name.ToLower().Contains("white"))
             {
                 currentColour = Color.white;
             }
