@@ -7,17 +7,22 @@ public class Nutrient : MonoBehaviour
     public Path initialPath;
     public int initialDirection = 1;
     public float moveSpeed;
+    public AudioSource switchSource;
 
     private float currentT = 0.0f;
     private Path currentPath;
     private int lastPoint = 0;
     private int currentPoint = 1;
     private int currentDirection = 0;
+    private AudioSource audioSource;
+    private bool overrideColour = false;
 
     private Vector3 initialScale;
     
     void Start()
     {
+        audioSource = GetComponent<AudioSource>();
+
         initialScale = transform.localScale;
 
         Reset();
@@ -43,7 +48,12 @@ public class Nutrient : MonoBehaviour
 
             GoToNextPoint();
 
-            GetComponent<SpriteRenderer>().color = GetCurrentColour();
+            if (overrideColour == false)
+            {
+                GetComponent<SpriteRenderer>().color = GetCurrentColour();
+            }
+
+            UpdateAudio();
         }
 
         // Always update position
@@ -72,7 +82,12 @@ public class Nutrient : MonoBehaviour
 
         transform.position = GetCurrentPosition();
 
-        GetComponent<SpriteRenderer>().color = GetCurrentColour();
+        if (overrideColour == false)
+        {
+            GetComponent<SpriteRenderer>().color = GetCurrentColour();
+        }
+
+        UpdateAudio();
     }
 
     void GoToNextPoint()
@@ -92,12 +107,22 @@ public class Nutrient : MonoBehaviour
                     currentPoint = 1;
                     lastPoint = 0;
                 }
+                else if (currentPath.nextTree != null)
+                {
+                    // if there is a tree, check if it needs this nutrient
+                    if (currentPath.nextTree.CheckNutrientsNeeded(this))
+                    {
+                        Reset();
+                    }
+                    else
+                    {
+                        SwitchDirection();
+                    }
+                }
                 else
                 {
                     // if there is no next path, change direction and go to end
-                    currentDirection = -1;
-                    currentPoint = currentPath.GetPointCount() - 2;
-                    lastPoint = currentPath.GetPointCount() - 1;
+                    SwitchDirection();
                 }
             }
         }
@@ -112,15 +137,43 @@ public class Nutrient : MonoBehaviour
                     currentPoint = currentPath.GetPointCount() - 2;
                     lastPoint = currentPath.GetPointCount() - 1;
                 }
+                else if (currentPath.previousTree != null)
+                {
+                    // if there is a tree, check if it needs this nutrient
+                    if (currentPath.previousTree.CheckNutrientsNeeded(this))
+                    {
+                        Reset();
+                    }
+                    else
+                    {
+                        SwitchDirection();
+                    }
+                }
                 else
                 {
                     // if there is no previous path, change direction and restart
-                    currentDirection = 1;
-                    currentPoint = 1;
-                    lastPoint = 0;
+                    SwitchDirection();
                 }
             }
         }
+    }
+
+    void SwitchDirection()
+    {
+        if (currentDirection == 1)
+        {
+            currentDirection = -1;
+            currentPoint = currentPath.GetPointCount() - 2;
+            lastPoint = currentPath.GetPointCount() - 1;
+        }
+        else
+        {
+            currentDirection = 1;
+            currentPoint = 1;
+            lastPoint = 0;
+        }
+
+        switchSource.Play();
     }
 
     Vector3 GetCurrentPosition()
@@ -143,5 +196,25 @@ public class Nutrient : MonoBehaviour
         {
             return currentPath.GetPathColour(lastPoint);
         }
+    }
+
+    void UpdateAudio()
+    {
+        if (GetComponent<SpriteRenderer>().color == new Color(1, 1, 0))
+        {
+            audioSource.panStereo = -1;
+            switchSource.panStereo = -1;
+        }
+        else
+        {
+            audioSource.panStereo = 1;
+            switchSource.panStereo = 1;
+        }
+    }
+
+    public void OverrideColour(Color newColour)
+    {
+        overrideColour = true;
+        GetComponent<SpriteRenderer>().color = newColour;
     }
 }

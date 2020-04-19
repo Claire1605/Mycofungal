@@ -6,6 +6,8 @@ public class Path : MonoBehaviour
 {
     public Path nextPath;
     public Path previousPath;
+    public Tree nextTree;
+    public Tree previousTree;
     public bool pathOn = true;
     public Sprite offSprite;
     public Sprite onSprite;
@@ -75,7 +77,7 @@ public class Path : MonoBehaviour
 
             if (pointName.Contains("yellow"))
             {
-                colour = new Color(255, 255, 0);
+                colour = new Color(1, 1, 0);
             }
 
             if (pointName.Contains("cyan"))
