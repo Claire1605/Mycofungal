@@ -5,13 +5,14 @@ using UnityEngine;
 public class FollowPath : MonoBehaviour
 {
     public Path initialPath;
+    public int initialDirection = 1;
     public float moveSpeed;
-    public int direction = 1;
 
+    private float currentT = 0.0f;
     private Path currentPath;
     private int lastPoint = 0;
     private int currentPoint = 1;
-    private float currentT = 0.0f;
+    private int currentDirection = 0;
 
     private Vector3 initialScale;
     
@@ -19,150 +20,119 @@ public class FollowPath : MonoBehaviour
     {
         initialScale = transform.localScale;
 
-        currentPath = initialPath;
-
-        if (direction == -1)
+        if (currentDirection != 1 && currentDirection != -1)
         {
-            currentT = 1.0f;
+            Debug.LogError("invalid direction: " + currentDirection, gameObject);
         }
 
-        transform.position = GetPosition();
+        Reset();
     }
-    
+
     void Update()
     {
-        currentT += (moveSpeed / GetDistance()) * Time.deltaTime * direction;
-
-        if ((direction == 1 && currentT > 1.0f) || (direction == -1 && currentT < 0.0f))
+        if (currentPath.GetPathOn() == false)
         {
-            NextPoint();
-
-            GetComponent<SpriteRenderer>().color = GetColour();
+            Reset();
         }
 
-        transform.position = GetPosition();
+        currentT += (moveSpeed / GetCurrentDistance()) * Time.deltaTime;
 
+        if (currentT > 1.0f)
+        {
+            currentT = 0.0f;
+
+            GoToNextPoint();
+
+            GetComponent<SpriteRenderer>().color = GetCurrentColour();
+        }
+
+        // Always update position
+        transform.position = GetCurrentPosition();
+
+        // wobble scale
         transform.localScale = new Vector3(initialScale.x * (1.0f + Mathf.PerlinNoise(Time.time, 0.0f) * 0.1f), initialScale.y * (1.0f + Mathf.PerlinNoise(0.0f, Time.time) * 0.1f), transform.localScale.z);
+    }
 
-        if (Input.GetKeyDown(KeyCode.Space))
+    private void Reset()
+    {
+        currentT = 0.0f;
+        currentPath = initialPath;
+        currentDirection = initialDirection;
+
+        if (currentDirection == 1)
         {
             lastPoint = 0;
             currentPoint = 1;
-            currentT = 0.0f;
-
-            GetComponent<SpriteRenderer>().color = GetColour();
-            transform.position = GetPosition();
         }
+        else
+        {
+            lastPoint = currentPath.GetPointCount() - 1;
+            currentPoint = currentPath.GetPointCount() - 2;
+        }
+
+        transform.position = GetCurrentPosition();
     }
 
-    void NextPoint()
+    void GoToNextPoint()
     {
-        switch (direction)
+        // go to next point based on direction
+        lastPoint = currentPoint;
+        currentPoint += currentDirection;
+        
+        if (currentDirection == 1)
         {
-            case 1:
-                lastPoint = currentPoint;
-                currentPoint += 1;
-                
-                if (currentPoint < currentPath.GetPointCount())
+            if (currentPoint >= currentPath.GetPointCount())
+            {
+                if (currentPath.nextPath != null)
                 {
-                    currentT = 0.0f;
+                    // if next path exists, switch to it and restart
+                    currentPath = currentPath.nextPath;
+                    currentPoint = 1;
+                    lastPoint = 0;
                 }
                 else
                 {
-                    if (currentPath.nextPath != null)
-                    {
-                        currentPath = currentPath.nextPath;
-                        currentT = 0.0f;
-                        currentPoint = 1;
-                        lastPoint = 0;
-                    }
-                    else
-                    {
-                        direction = -1;
-                        currentT = 1.0f;
-                        currentPoint = currentPath.GetPointCount() - 2;
-                        lastPoint = currentPath.GetPointCount() - 1;
-                    }
+                    // if there is no next path, change direction and go to end
+                    currentDirection = -1;
+                    currentPoint = currentPath.GetPointCount() - 2;
+                    lastPoint = currentPath.GetPointCount() - 1;
                 }
-
-                break;
-            case -1:
-                lastPoint = currentPoint;
-                currentPoint -= 1;
-
-                if (currentPoint >= 0)
+            }
+        }
+        else
+        {
+            if (currentPoint < 0)
+            {
+                if (currentPath.previousPath != null)
                 {
-                    currentT = 1.0f;
+                    // if previous path exists, switch to it and go to end
+                    currentPath = currentPath.previousPath;
+                    currentPoint = currentPath.GetPointCount() - 2;
+                    lastPoint = currentPath.GetPointCount() - 1;
                 }
                 else
                 {
-                    if (currentPath.previousPath != null)
-                    {
-                        currentPath = currentPath.previousPath;
-                        currentT = 1.0f;
-                        currentPoint = currentPath.GetPointCount() - 2;
-                        lastPoint = currentPath.GetPointCount() - 1;
-                    }
-                    else
-                    {
-                        direction = 1;
-                        currentT = 0.0f;
-                        currentPoint = 1;
-                        lastPoint = 0;
-                    }
+                    // if there is no previous path, change direction and restart
+                    currentDirection = 1;
+                    currentPoint = 1;
+                    lastPoint = 0;
                 }
-                break;
-            default: Debug.Log("direction is invalid: " + direction, gameObject);
-                break;
+            }
         }
     }
 
-    float GetDistance()
+    Vector3 GetCurrentPosition()
     {
-        float currentDistance = 1.0f;
-
-        if (currentPath.pathPoints != null && lastPoint < currentPath.GetPointCount() && currentPoint < currentPath.GetPointCount())
-        {
-            currentDistance = Vector3.Distance(currentPath.GetPoint(lastPoint).transform.position, currentPath.GetPoint(currentPoint).transform.position);
-        }
-
-        return currentDistance;
+        return currentPath.GetPathPosition(lastPoint, currentPoint, currentT);
     }
 
-    Vector3 GetPosition()
+    float GetCurrentDistance()
     {
-        Vector3 currentPosition = transform.position;
-
-        if (currentPath != null && currentPath.pathPoints != null && lastPoint < currentPath.GetPointCount() && currentPoint < currentPath.GetPointCount())
-        {
-            currentPosition = Vector3.Lerp(currentPath.GetPoint(lastPoint).transform.position, currentPath.GetPoint(currentPoint).transform.position, currentT);
-        }
-
-        return currentPosition;
+        return currentPath.GetDistanceBetweenPoints(lastPoint, currentPoint);
     }
 
-    Color GetColour()
+    Color GetCurrentColour()
     {
-        Color currentColour = GetComponent<SpriteRenderer>().color;
-
-        if (currentPath != null && currentPath.pathPoints != null && currentPoint < currentPath.GetPointCount())
-        {
-            if (currentPath.GetPoint(currentPoint).name.ToLower().Contains("yellow"))
-            {
-                currentColour = Color.yellow;
-            }
-
-            if (currentPath.GetPoint(currentPoint).name.ToLower().Contains("cyan"))
-            {
-                currentColour = Color.cyan;
-            }
-
-            if (currentPath.GetPoint(currentPoint).name.ToLower().Contains("white"))
-            {
-                currentColour = Color.white;
-            }
-        }
-
-        return currentColour;
+        return currentPath.GetPathColour(currentPoint);
     }
 }
