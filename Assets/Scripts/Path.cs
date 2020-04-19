@@ -6,19 +6,36 @@ public class Path : MonoBehaviour
 {
     public Path nextPath;
     public Path previousPath;
-    public Transform pathPoints;
     public bool pathOn = true;
+    public Sprite offSprite;
+    public Sprite onSprite;
+
+    private void Awake()
+    {
+        if (onSprite == null && GetComponent<SpriteRenderer>())
+        {
+            onSprite = GetComponent<SpriteRenderer>().sprite;
+        }
+    }
+
+    private void Start()
+    {
+        if (pathOn == false)
+        {
+            SwitchOff();
+        }
+    }
 
     public int GetPointCount()
     {
-        return pathPoints.childCount;
+        return transform.childCount;
     }
 
     public Transform GetPoint(int point)
     {
         if (point < GetPointCount() && point >= 0)
         {
-            return pathPoints.GetChild(point);
+            return transform.GetChild(point);
         }
 
         return null;
@@ -58,7 +75,7 @@ public class Path : MonoBehaviour
 
             if (pointName.Contains("yellow"))
             {
-                colour = Color.yellow;
+                colour = new Color(255, 255, 0);
             }
 
             if (pointName.Contains("cyan"))
@@ -83,13 +100,21 @@ public class Path : MonoBehaviour
     public void SwitchOn()
     {
         pathOn = true;
-        gameObject.SetActive(true);
+
+        if (GetComponent<SpriteRenderer>() && onSprite)
+        {
+            GetComponent<SpriteRenderer>().sprite = onSprite;
+        }
     }
 
     public void SwitchOff()
     {
         pathOn = false;
-        gameObject.SetActive(false);
+
+        if (GetComponent<SpriteRenderer>() && offSprite)
+        {
+            GetComponent<SpriteRenderer>().sprite = offSprite;
+        }
     }
 
     public void SetNextPath(Path path)

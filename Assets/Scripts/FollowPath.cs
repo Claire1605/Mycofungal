@@ -20,12 +20,12 @@ public class FollowPath : MonoBehaviour
     {
         initialScale = transform.localScale;
 
+        Reset();
+
         if (currentDirection != 1 && currentDirection != -1)
         {
             Debug.LogError("invalid direction: " + currentDirection, gameObject);
         }
-
-        Reset();
     }
 
     void Update()
@@ -71,6 +71,8 @@ public class FollowPath : MonoBehaviour
         }
 
         transform.position = GetCurrentPosition();
+
+        GetComponent<SpriteRenderer>().color = GetCurrentColour();
     }
 
     void GoToNextPoint()
@@ -133,6 +135,13 @@ public class FollowPath : MonoBehaviour
 
     Color GetCurrentColour()
     {
-        return currentPath.GetPathColour(currentPoint);
+        if (currentDirection == 1)
+        {
+            return currentPath.GetPathColour(currentPoint);
+        }
+        else
+        {
+            return currentPath.GetPathColour(lastPoint);
+        }
     }
 }

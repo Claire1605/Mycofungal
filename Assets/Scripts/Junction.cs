@@ -9,7 +9,6 @@ public class Junction : MonoBehaviour
     [Header("Must have equal number of junction paths and next paths and junction sprites")]
     public Path[] junctionPaths;
     public Path[] nextPaths;
-    public Sprite[] junctionSprites;
 
     public int currentJunction = 0;
     
@@ -37,11 +36,9 @@ public class Junction : MonoBehaviour
 
     void UpdateJunctions()
     {
-        if (currentJunction < junctionPaths.Length && currentJunction > 0)
+        if (currentJunction < junctionPaths.Length && currentJunction >= 0)
         {
             previousPath.nextPath = junctionPaths[currentJunction];
-
-            GetComponent<SpriteRenderer>().sprite = junctionSprites[currentJunction];
 
             for (int junction = 0; junction < junctionPaths.Length; junction++)
             {
